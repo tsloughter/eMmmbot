@@ -1,0 +1,3 @@
+{["images", id], emb_resource_images, []}.
+{["images"], emb_resource_images, []}.
+{['*'], emb_resource_static, []}.
