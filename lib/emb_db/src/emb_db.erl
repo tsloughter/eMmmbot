@@ -23,7 +23,7 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {db}).
+-record(state, {db, host}).
 
 %%%===================================================================
 %%% Public Types
@@ -57,16 +57,18 @@ terminate(PID) ->
 
 %% @private
 init([Server, Port, DB]) ->
-    CouchServer = couchbeam:server_connection(Server, Port, "", [{basic_auth, {"oneraverdesplandeaughtst", "4f23bgBWUoa7ToDv4lFqccmQ"}}]),
+    SPort = io_lib:format("~p", [Port]),
+    Host = list_to_binary("http://" ++ Server ++ ":" ++ SPort),
+    CouchServer = couchbeam:server_connection(Server, Port, "", []),
     {ok, CouchDB} = couchbeam:open_db(CouchServer, DB),
-    {ok, #state{db=CouchDB}}.
+    {ok, #state{db=CouchDB, host=Host}}.
 
 %% @private
-handle_call(all, _From, #state{db=DB}=State) ->
-    Docs = get_docs(DB, [{descending, true}]),
+handle_call(all, _From, #state{db=DB, host=Host}=State) ->
+    Docs = get_docs(Host, DB, [{descending, true}]),
     {reply, mochijson2:encode(Docs), State};
-handle_call({find, ID}, _From, #state{db=DB}=State) ->
-    [Doc] = get_docs(DB, [{key, list_to_binary(ID)}]),
+handle_call({find, ID}, _From, #state{db=DB, host=Host}=State) ->
+    [Doc] = get_docs(Host, DB, [{key, list_to_binary(ID)}]),
     {reply, mochijson2:encode(Doc), State};
 handle_call({create, Doc}, _From, #state{db=DB}=State) ->
     {ok, Doc1} = couchbeam:save_doc(DB, Doc),
@@ -102,7 +104,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
-get_docs(DB, Options) ->
+get_docs(_Host, DB, Options) ->
     {ok, AllDocs} = couchbeam:view(DB, {"all", "find"}, Options),
     {ok, Results} = couchbeam_view:fetch(AllDocs),
 
@@ -112,6 +114,11 @@ get_docs(DB, Options) ->
 
     lists:map(fun({Row}) ->
                       {<<"value">>, {Value}} = lists:keyfind(<<"value">>, 1, Row),
+                      %ID = couchbeam_doc:get_value(<<"id">>, {Value}),
+                      %URL = list_to_binary(couchbeam:doc_url(DB, ID)),
+                      %Where = couchbeam_doc:get_value(<<"where">>, {Value}),
+                      %Where2 = <<Host/binary, "/", URL/binary, "/", Where/binary>>,
+                      %{Doc} = couchbeam_doc:set_value(<<"where">>, Where2, {Value}),
                       {struct, Value}
               end, Rows).
 
