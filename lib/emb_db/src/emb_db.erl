@@ -14,6 +14,8 @@
          find/2,
          create/2,
          update/3,
+         next/2,
+         prev/2,
          terminate/1]).
 
 %% gen_server callbacks
@@ -22,6 +24,8 @@
 -export_type([]).
 
 -define(SERVER, ?MODULE).
+
+-define(LIMIT, 10).
 
 -record(state, {db, host}).
 
@@ -38,6 +42,12 @@ start_link(Server, Port, DB) ->
 
 all(PID) ->
     gen_server:call(PID, all).
+
+next(PID, Key) ->
+    gen_server:call(PID, {next, Key}).
+
+prev(PID, Key) ->
+    gen_server:call(PID, {prev, Key}).
 
 find(PID, ID) ->
     gen_server:call(PID, {find, ID}).
@@ -65,7 +75,13 @@ init([Server, Port, DB]) ->
 
 %% @private
 handle_call(all, _From, #state{db=DB, host=Host}=State) ->
-    Docs = get_docs(Host, DB, [{descending, true}]),
+    Docs = get_docs(Host, DB, [{descending, false}, {limit, ?LIMIT}]),
+    {reply, mochijson2:encode(Docs), State};
+handle_call({next, Key}, _From, #state{db=DB, host=Host}=State) ->
+    Docs = get_docs(Host, DB, [{descending, false}, {startkey, list_to_binary(Key)}, {skip, 1}, {limit, ?LIMIT}]),
+    {reply, mochijson2:encode(Docs), State};
+handle_call({prev, Key}, _From, #state{db=DB, host=Host}=State) ->
+    Docs = get_docs(Host, DB, [{descending, true}, {startkey, list_to_binary(Key)}, {skip, 1}, {limit, ?LIMIT}]),
     {reply, mochijson2:encode(Docs), State};
 handle_call({find, ID}, _From, #state{db=DB, host=Host}=State) ->
     [Doc] = get_docs(Host, DB, [{key, list_to_binary(ID)}]),

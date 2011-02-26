@@ -1,3 +1,5 @@
 {["images", id], emb_resource_images, []}.
+{["prev", prev], emb_resource_images, []}.
+{["next", next], emb_resource_images, []}.
 {["images"], emb_resource_images, []}.
 {['*'], ece_resource_static, []}.

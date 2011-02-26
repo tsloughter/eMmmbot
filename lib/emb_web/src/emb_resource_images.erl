@@ -40,8 +40,20 @@ process_post(ReqData, Ctx) ->
 to_json(ReqData, Ctx) ->
     case wrq:path_info(id, ReqData) of
         undefined ->
-            All = emb_db:all(Ctx#ctx.db),
-            {All, ReqData, Ctx};
+            case wrq:path_info(next, ReqData) of
+                undefined ->
+                    case wrq:path_info(prev, ReqData) of
+                        undefined ->
+                            All = emb_db:all(Ctx#ctx.db),
+                            {All, ReqData, Ctx};
+                        Prev ->
+                            JsonDoc = emb_db:prev(Ctx#ctx.db, Prev),
+                            {JsonDoc, ReqData, Ctx}
+                    end;
+                Next ->
+                    JsonDoc = emb_db:next(Ctx#ctx.db, Next),
+                    {JsonDoc, ReqData, Ctx}
+            end;
         ID ->
             JsonDoc = emb_db:find(Ctx#ctx.db, ID),
             {JsonDoc, ReqData, Ctx}
