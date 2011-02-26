@@ -16,6 +16,8 @@
          update/3,
          next/2,
          prev/2,
+         first/1,
+         last/1,
          terminate/1]).
 
 %% gen_server callbacks
@@ -48,6 +50,12 @@ next(PID, Key) ->
 
 prev(PID, Key) ->
     gen_server:call(PID, {prev, Key}).
+
+first(PID) ->
+    gen_server:call(PID, first).
+
+last(PID) ->
+    gen_server:call(PID, last).
 
 find(PID, ID) ->
     gen_server:call(PID, {find, ID}).
@@ -82,6 +90,12 @@ handle_call({next, Key}, _From, #state{db=DB, host=Host}=State) ->
     {reply, mochijson2:encode(Docs), State};
 handle_call({prev, Key}, _From, #state{db=DB, host=Host}=State) ->
     Docs = get_docs(Host, DB, [{descending, true}, {startkey, list_to_binary(Key)}, {skip, 1}, {limit, ?LIMIT}]),
+    {reply, mochijson2:encode(Docs), State};
+handle_call(first, _From, #state{db=DB, host=Host}=State) ->
+    Docs = get_docs(Host, DB, [{descending, false}, {limit, ?LIMIT}]),
+    {reply, mochijson2:encode(Docs), State};
+handle_call(last, _From, #state{db=DB, host=Host}=State) ->
+    Docs = get_docs(Host, DB, [{descending, true}, {limit, ?LIMIT}]),
     {reply, mochijson2:encode(Docs), State};
 handle_call({find, ID}, _From, #state{db=DB, host=Host}=State) ->
     [Doc] = get_docs(Host, DB, [{key, list_to_binary(ID)}]),

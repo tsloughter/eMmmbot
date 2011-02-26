@@ -38,26 +38,31 @@ process_post(ReqData, Ctx) ->
     {true, ReqData2, Ctx}.
 
 to_json(ReqData, Ctx) ->
-    case wrq:path_info(id, ReqData) of
-        undefined ->
-            case wrq:path_info(next, ReqData) of
-                undefined ->
-                    case wrq:path_info(prev, ReqData) of
-                        undefined ->
-                            All = emb_db:all(Ctx#ctx.db),
-                            {All, ReqData, Ctx};
-                        Prev ->
-                            JsonDoc = emb_db:prev(Ctx#ctx.db, Prev),
-                            {JsonDoc, ReqData, Ctx}
-                    end;
-                Next ->
-                    JsonDoc = emb_db:next(Ctx#ctx.db, Next),
-                    {JsonDoc, ReqData, Ctx}
-            end;
-        ID ->
-            JsonDoc = emb_db:find(Ctx#ctx.db, ID),
-            {JsonDoc, ReqData, Ctx}
-    end.
+    Results = case wrq:raw_path(ReqData) of
+                  "/last" ->
+                      emb_db:last(Ctx#ctx.db);
+                  "/first" ->
+                      emb_db:first(Ctx#ctx.db);
+                  _ ->
+                      case wrq:path_info(id, ReqData) of
+                          undefined ->
+                              case wrq:path_info(next, ReqData) of
+                                  undefined ->
+                                      case wrq:path_info(prev, ReqData) of
+                                          undefined ->
+                                              emb_db:all(Ctx#ctx.db);
+                                          Prev ->
+                                              emb_db:prev(Ctx#ctx.db, Prev)
+                                      end;
+                                  Next ->
+                                      emb_db:next(Ctx#ctx.db, Next)
+                              end;
+                          ID ->
+                              emb_db:find(Ctx#ctx.db, ID)
+                      end
+              end,
+
+    {Results, ReqData, Ctx}.
 
 from_json(ReqData, Ctx) ->
     case wrq:path_info(id, ReqData) of
