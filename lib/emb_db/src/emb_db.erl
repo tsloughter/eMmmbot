@@ -99,29 +99,29 @@ init([Server, Port, DB]) ->
 
 %% @private
 handle_call(all, _From, #state{db=DB, host=Host}=State) ->
-    Docs = get_docs(Host, DB, [{descending, false}, {limit, ?LIMIT}]),
+    Docs = get_docs(Host, DB, [{descending, true}, {limit, ?LIMIT}]),
     {reply, mochijson2:encode(Docs), State};
 handle_call(tag_cloud, _From, #state{db=DB}=State) ->
     Tags = get_tags(DB, [{group, true}]),
     {reply, couchbeam_util:json_encode(Tags), State};
 handle_call({images_for_tag, Tag}, _From, #state{db=DB}=State) ->
-    Rows = get_tags(DB, [{descending, false}, {reduce, false}, {include_docs, true}, {key, list_to_binary(Tag)}, {limit, ?LIMIT}]),
+    Rows = get_tags(DB, [{descending, true}, {reduce, false}, {include_docs, true}, {key, list_to_binary(Tag)}, {limit, ?LIMIT}]),
     Docs = lists:map(fun(Row) ->
                              Doc = couchbeam_doc:get_value(<<"doc">>, Row),
                              couchbeam_doc:set_value(<<"id">>, couchbeam_doc:get_id(Doc), Doc)
                      end, Rows),
     {reply, couchbeam_util:json_encode(Docs), State};
 handle_call({next, Key}, _From, #state{db=DB, host=Host}=State) ->
-    Docs = get_docs(Host, DB, [{descending, false}, {startkey, list_to_binary(Key)}, {skip, 1}, {limit, ?LIMIT}]),
-    {reply, mochijson2:encode(Docs), State};
-handle_call({prev, Key}, _From, #state{db=DB, host=Host}=State) ->
     Docs = get_docs(Host, DB, [{descending, true}, {startkey, list_to_binary(Key)}, {skip, 1}, {limit, ?LIMIT}]),
     {reply, mochijson2:encode(Docs), State};
+handle_call({prev, Key}, _From, #state{db=DB, host=Host}=State) ->
+    Docs = get_docs(Host, DB, [{descending, false}, {startkey, list_to_binary(Key)}, {skip, 1}, {limit, ?LIMIT}]),
+    {reply, mochijson2:encode(Docs), State};
 handle_call(first, _From, #state{db=DB, host=Host}=State) ->
-    Docs = get_docs(Host, DB, [{descending, false}, {limit, ?LIMIT}]),
+    Docs = get_docs(Host, DB, [{descending, true}, {limit, ?LIMIT}]),
     {reply, mochijson2:encode(Docs), State};
 handle_call(last, _From, #state{db=DB, host=Host}=State) ->
-    Docs = get_docs(Host, DB, [{descending, true}, {limit, ?LIMIT}]),
+    Docs = get_docs(Host, DB, [{descending, false}, {limit, ?LIMIT}]),
     {reply, mochijson2:encode(Docs), State};
 handle_call({find, ID}, _From, #state{db=DB, host=Host}=State) ->
     [Doc] = get_docs(Host, DB, [{key, list_to_binary(ID)}]),
