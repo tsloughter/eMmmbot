@@ -1,4 +1,5 @@
 {["images", id], emb_resource_images, []}.
+{["tags"], emb_resource_tags, []}.
 {["tags", id], emb_resource_tags, []}.
 {["prev", prev], emb_resource_images, []}.
 {["next", next], emb_resource_images, []}.

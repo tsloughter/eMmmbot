@@ -20,6 +20,7 @@
          last/1,
          add_tags/3,
          remove_tag/3,
+         tag_cloud/1,
          terminate/1]).
 
 %% gen_server callbacks
@@ -46,6 +47,9 @@ start_link(Server, Port, DB) ->
 
 all(PID) ->
     gen_server:call(PID, all).
+
+tag_cloud(PID) ->
+    gen_server:call(PID, tag_cloud).
 
 next(PID, Key) ->
     gen_server:call(PID, {next, Key}).
@@ -93,6 +97,9 @@ init([Server, Port, DB]) ->
 handle_call(all, _From, #state{db=DB, host=Host}=State) ->
     Docs = get_docs(Host, DB, [{descending, false}, {limit, ?LIMIT}]),
     {reply, mochijson2:encode(Docs), State};
+handle_call(tag_cloud, _From, #state{db=DB}=State) ->
+    Tags = get_tags(DB, [{group, true}]),
+    {reply, couchbeam_util:json_encode(Tags), State};
 handle_call({next, Key}, _From, #state{db=DB, host=Host}=State) ->
     Docs = get_docs(Host, DB, [{descending, false}, {startkey, list_to_binary(Key)}, {skip, 1}, {limit, ?LIMIT}]),
     {reply, mochijson2:encode(Docs), State};
@@ -122,20 +129,18 @@ handle_call({update, ID, NewDoc}, _From, #state{db=DB}=State) ->
 handle_call({add_tags, ID, Tags}, _From, #state{db=DB}=State) ->
     IDBinary = list_to_binary(ID),
     {ok, Doc} = couchbeam:open_doc(DB, IDBinary),
-    OldTags = couchbeam_doc:get_value(<<"tags">>, Doc),
+    OldTags = couchbeam_doc:get_value(<<"tags">>, Doc, []),
     NewTags = list_to_binary(Tags),
     NewTags2 = merge_tags(OldTags, NewTags),
-    io:format("NewTags2 ~p~n", [NewTags2]),
     NewDoc = couchbeam_doc:set_value(<<"tags">>, NewTags2, Doc),
     {ok, _} = couchbeam:save_doc(DB, NewDoc),
     {reply, ok, State};
 handle_call({remove_tag, ID, Tag}, _From, #state{db=DB}=State) ->
     IDBinary = list_to_binary(ID),
     {ok, Doc} = couchbeam:open_doc(DB, IDBinary),
-    Tags = couchbeam_doc:get_value(<<"tags">>, Doc),
+    Tags = couchbeam_doc:get_value(<<"tags">>, Doc, []),
     TagBin = list_to_binary(Tag),
     NewTags2 = remove_tag(Tags, TagBin),
-    io:format("NewTags2 ~p~n", [NewTags2]),
     NewDoc = couchbeam_doc:set_value(<<"tags">>, NewTags2, Doc),
     {ok, _} = couchbeam:save_doc(DB, NewDoc),
     {reply, ok, State};
@@ -192,4 +197,10 @@ get_docs(_Host, DB, Options) ->
                       %{Doc} = couchbeam_doc:set_value(<<"where">>, Where2, {Value}),
                       {struct, Value}
               end, Rows).
+
+get_tags(DB, Options) ->
+    {ok, AllDocs} = couchbeam:view(DB, {"all", "tags"}, Options),
+    {ok, Results} = couchbeam_view:fetch(AllDocs),
+    {[{<<"rows">>, Rows}]} = Results,
+    Rows.
 
