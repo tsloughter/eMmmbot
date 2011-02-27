@@ -18,6 +18,8 @@
          prev/2,
          first/1,
          last/1,
+         add_tags/3,
+         remove_tag/3,
          terminate/1]).
 
 %% gen_server callbacks
@@ -27,7 +29,7 @@
 
 -define(SERVER, ?MODULE).
 
--define(LIMIT, 10).
+-define(LIMIT, 12).
 
 -record(state, {db, host}).
 
@@ -65,6 +67,12 @@ create(PID, Doc) ->
 
 update(PID, ID, JsonDoc) ->
     gen_server:call(PID, {update, ID, JsonDoc}).
+
+add_tags(PID, ID, Tags) ->
+    gen_server:call(PID, {add_tags, ID, Tags}).
+
+remove_tag(PID, ID, Tag) ->
+    gen_server:call(PID, {remove_tag, ID, Tag}).
 
 terminate(PID) ->
     gen_server:call(PID, terminate).
@@ -111,6 +119,26 @@ handle_call({update, ID, NewDoc}, _From, #state{db=DB}=State) ->
     NewDoc3 = couchbeam_doc:set_value(<<"_rev">>, couchbeam_doc:get_rev(Doc), NewDoc2),
     {ok, {Doc1}} = couchbeam:save_doc(DB, NewDoc3),
     {reply, mochijson2:encode({struct, Doc1}), State};
+handle_call({add_tags, ID, Tags}, _From, #state{db=DB}=State) ->
+    IDBinary = list_to_binary(ID),
+    {ok, Doc} = couchbeam:open_doc(DB, IDBinary),
+    OldTags = couchbeam_doc:get_value(<<"tags">>, Doc),
+    NewTags = list_to_binary(Tags),
+    NewTags2 = merge_tags(OldTags, NewTags),
+    io:format("NewTags2 ~p~n", [NewTags2]),
+    NewDoc = couchbeam_doc:set_value(<<"tags">>, NewTags2, Doc),
+    {ok, _} = couchbeam:save_doc(DB, NewDoc),
+    {reply, ok, State};
+handle_call({remove_tag, ID, Tag}, _From, #state{db=DB}=State) ->
+    IDBinary = list_to_binary(ID),
+    {ok, Doc} = couchbeam:open_doc(DB, IDBinary),
+    Tags = couchbeam_doc:get_value(<<"tags">>, Doc),
+    TagBin = list_to_binary(Tag),
+    NewTags2 = remove_tag(Tags, TagBin),
+    io:format("NewTags2 ~p~n", [NewTags2]),
+    NewDoc = couchbeam_doc:set_value(<<"tags">>, NewTags2, Doc),
+    {ok, _} = couchbeam:save_doc(DB, NewDoc),
+    {reply, ok, State};
 handle_call(terminate, _From, State) ->
     {stop, normal, State}.
 
@@ -133,6 +161,19 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+merge_tags(Tags, NewTags) ->
+    TagsList = lists:sort(re:split(Tags, ",")),
+    NewTagsList = lists:sort(re:split(NewTags, ",")),
+    bjoin(lists:umerge(TagsList, NewTagsList)).
+
+remove_tag(Tags, Tag) ->
+    TagsList = re:split(Tags, ","),
+    bjoin(lists:remove(Tag, TagsList)).
+
+bjoin(List) ->
+    F = fun(A, B) -> <<A/binary, ",", B/binary>> end,
+    lists:foldr(F, <<"">>, List).
 
 get_docs(_Host, DB, Options) ->
     {ok, AllDocs} = couchbeam:view(DB, {"all", "find"}, Options),

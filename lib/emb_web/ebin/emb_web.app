@@ -6,6 +6,7 @@
    {modules, [emb_web_app,
               emb_web_sup,
               emb_resource_images,
+              emb_resource_tags,
               emb_resource_static]},
    {registered,[emb_web_sup]},
    {applications, [kernel, stdlib, webmachine]},
