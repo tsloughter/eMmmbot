@@ -44,21 +44,26 @@ to_json(ReqData, Ctx) ->
                   "/first" ->
                       emb_db:first(Ctx#ctx.db);
                   _ ->
-                      case wrq:path_info(id, ReqData) of
+                      case wrq:path_info(tag, ReqData) of
                           undefined ->
-                              case wrq:path_info(next, ReqData) of
+                              case wrq:path_info(id, ReqData) of
                                   undefined ->
-                                      case wrq:path_info(prev, ReqData) of
+                                      case wrq:path_info(next, ReqData) of
                                           undefined ->
-                                              emb_db:all(Ctx#ctx.db);
-                                          Prev ->
-                                              emb_db:prev(Ctx#ctx.db, Prev)
+                                              case wrq:path_info(prev, ReqData) of
+                                                  undefined ->
+                                                      emb_db:all(Ctx#ctx.db);
+                                                  Prev ->
+                                                      emb_db:prev(Ctx#ctx.db, Prev)
+                                              end;
+                                          Next ->
+                                              emb_db:next(Ctx#ctx.db, Next)
                                       end;
-                                  Next ->
-                                      emb_db:next(Ctx#ctx.db, Next)
+                                  ID ->
+                                      emb_db:find(Ctx#ctx.db, ID)
                               end;
-                          ID ->
-                              emb_db:find(Ctx#ctx.db, ID)
+                          Tag ->
+                              emb_db:images_for_tag(Ctx#ctx.db, Tag)
                       end
               end,
 

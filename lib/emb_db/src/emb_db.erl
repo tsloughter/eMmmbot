@@ -14,6 +14,7 @@
          find/2,
          create/2,
          update/3,
+         images_for_tag/2,
          next/2,
          prev/2,
          first/1,
@@ -50,6 +51,9 @@ all(PID) ->
 
 tag_cloud(PID) ->
     gen_server:call(PID, tag_cloud).
+
+images_for_tag(PID, Tag) ->
+    gen_server:call(PID, {images_for_tag, Tag}).
 
 next(PID, Key) ->
     gen_server:call(PID, {next, Key}).
@@ -100,6 +104,13 @@ handle_call(all, _From, #state{db=DB, host=Host}=State) ->
 handle_call(tag_cloud, _From, #state{db=DB}=State) ->
     Tags = get_tags(DB, [{group, true}]),
     {reply, couchbeam_util:json_encode(Tags), State};
+handle_call({images_for_tag, Tag}, _From, #state{db=DB}=State) ->
+    Rows = get_tags(DB, [{descending, false}, {reduce, false}, {include_docs, true}, {key, list_to_binary(Tag)}, {limit, ?LIMIT}]),
+    Docs = lists:map(fun(Row) ->
+                             Doc = couchbeam_doc:get_value(<<"doc">>, Row),
+                             couchbeam_doc:set_value(<<"id">>, couchbeam_doc:get_id(Doc), Doc)
+                     end, Rows),
+    {reply, couchbeam_util:json_encode(Docs), State};
 handle_call({next, Key}, _From, #state{db=DB, host=Host}=State) ->
     Docs = get_docs(Host, DB, [{descending, false}, {startkey, list_to_binary(Key)}, {skip, 1}, {limit, ?LIMIT}]),
     {reply, mochijson2:encode(Docs), State};
@@ -174,7 +185,7 @@ merge_tags(Tags, NewTags) ->
 
 remove_tag(Tags, Tag) ->
     TagsList = re:split(Tags, ","),
-    bjoin(lists:remove(Tag, TagsList)).
+    bjoin(lists:delete(Tag, TagsList)).
 
 bjoin(List) ->
     F = fun(A, B) -> <<A/binary, ",", B/binary>> end,
@@ -184,9 +195,7 @@ get_docs(_Host, DB, Options) ->
     {ok, AllDocs} = couchbeam:view(DB, {"all", "find"}, Options),
     {ok, Results} = couchbeam_view:fetch(AllDocs),
 
-    {[{<<"total_rows">>, _Total},
-      {<<"offset">>, _Offset},
-      {<<"rows">>, Rows}]} = Results,
+    Rows = couchbeam_doc:get_value(<<"rows">>, Results, []),
 
     lists:map(fun({Row}) ->
                       {<<"value">>, {Value}} = lists:keyfind(<<"value">>, 1, Row),
@@ -201,6 +210,5 @@ get_docs(_Host, DB, Options) ->
 get_tags(DB, Options) ->
     {ok, AllDocs} = couchbeam:view(DB, {"all", "tags"}, Options),
     {ok, Results} = couchbeam_view:fetch(AllDocs),
-    {[{<<"rows">>, Rows}]} = Results,
-    Rows.
+    couchbeam_doc:get_value(<<"rows">>, Results, []).
 
