@@ -129,9 +129,9 @@ handle_call({find, ID}, _From, #state{db=DB, host=Host}=State) ->
 handle_call({create, Doc}, _From, #state{db=DB}=State) ->
     {Mega, Sec, Micro} = now(),
     ID = io_lib:format("~p~p~p", [Mega, Sec, Micro]),
-    couchbeam_doc:set_value(<<"_id">>, ID, Doc),
-    couchbeam_doc:set_value(<<"id">>, ID, Doc),
-    {ok, NewDoc} = couchbeam:save_doc(DB, Doc),
+    Doc1 = couchbeam_doc:set_value(<<"_id">>, ID, Doc),
+    Doc2 = couchbeam_doc:set_value(<<"id">>, ID, Doc1),
+    {ok, NewDoc} = couchbeam:save_doc(DB, Doc2),
     {reply, mochijson2:encode({struct, NewDoc}), State};
 handle_call({update, ID, NewDoc}, _From, #state{db=DB}=State) ->
     IDBinary = list_to_binary(ID),
