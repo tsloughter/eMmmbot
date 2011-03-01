@@ -63,7 +63,8 @@ to_json(ReqData, Ctx) ->
                                       emb_db:find(Ctx#ctx.db, ID)
                               end;
                           Tag ->
-                              emb_db:images_for_tag(Ctx#ctx.db, Tag)
+                              [{DecodedTag,[]}] = mochiweb_util:parse_qs(Tag),
+                              emb_db:images_for_tag(Ctx#ctx.db, DecodedTag)
                       end
               end,
 

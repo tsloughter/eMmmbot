@@ -100,7 +100,7 @@ init([Server, Port, DB]) ->
 %% @private
 handle_call(all, _From, #state{db=DB, host=Host}=State) ->
     Docs = get_docs(Host, DB, [{descending, true}, {limit, ?LIMIT}]),
-    {reply, mochijson2:encode(Docs), State};
+    {reply, couchbeam_util:json_encode(Docs), State};
 handle_call(tag_cloud, _From, #state{db=DB}=State) ->
     Tags = get_tags(DB, [{group, true}]),
     {reply, couchbeam_util:json_encode(Tags), State};
@@ -113,19 +113,19 @@ handle_call({images_for_tag, Tag}, _From, #state{db=DB}=State) ->
     {reply, couchbeam_util:json_encode(Docs), State};
 handle_call({next, Key}, _From, #state{db=DB, host=Host}=State) ->
     Docs = get_docs(Host, DB, [{descending, true}, {startkey, list_to_binary(Key)}, {skip, 1}, {limit, ?LIMIT}]),
-    {reply, mochijson2:encode(Docs), State};
+    {reply, couchbeam_util:json_encode(Docs), State};
 handle_call({prev, Key}, _From, #state{db=DB, host=Host}=State) ->
     Docs = get_docs(Host, DB, [{descending, false}, {startkey, list_to_binary(Key)}, {skip, 1}, {limit, ?LIMIT}]),
-    {reply, mochijson2:encode(Docs), State};
+    {reply, couchbeam_util:json_encode(Docs), State};
 handle_call(first, _From, #state{db=DB, host=Host}=State) ->
     Docs = get_docs(Host, DB, [{descending, true}, {limit, ?LIMIT}]),
-    {reply, mochijson2:encode(Docs), State};
+    {reply, couchbeam_util:json_encode(Docs), State};
 handle_call(last, _From, #state{db=DB, host=Host}=State) ->
     Docs = get_docs(Host, DB, [{descending, false}, {limit, ?LIMIT}]),
-    {reply, mochijson2:encode(Docs), State};
+    {reply, couchbeam_util:json_encode(Docs), State};
 handle_call({find, ID}, _From, #state{db=DB, host=Host}=State) ->
     [Doc] = get_docs(Host, DB, [{key, list_to_binary(ID)}]),
-    {reply, mochijson2:encode(Doc), State};
+    {reply, couchbeam_util:json_encode(Doc), State};
 handle_call({create, Doc}, _From, #state{db=DB}=State) ->
     {Mega, Sec, Micro} = now(),
     ID = list_to_binary(io_lib:format("~p~p~p", [Mega, Sec, Micro])),
@@ -139,7 +139,7 @@ handle_call({update, ID, NewDoc}, _From, #state{db=DB}=State) ->
     NewDoc2 = couchbeam_doc:set_value(<<"_id">>, IDBinary, {NewDoc}),
     NewDoc3 = couchbeam_doc:set_value(<<"_rev">>, couchbeam_doc:get_rev(Doc), NewDoc2),
     {ok, {Doc1}} = couchbeam:save_doc(DB, NewDoc3),
-    {reply, mochijson2:encode({struct, Doc1}), State};
+    {reply, couchbeam_util:json_encode({struct, Doc1}), State};
 handle_call({add_tags, ID, Tags}, _From, #state{db=DB}=State) ->
     IDBinary = list_to_binary(ID),
     {ok, Doc} = couchbeam:open_doc(DB, IDBinary),
@@ -201,13 +201,13 @@ get_docs(_Host, DB, Options) ->
     Rows = couchbeam_doc:get_value(<<"rows">>, Results, []),
 
     lists:map(fun({Row}) ->
-                      {<<"value">>, {Value}} = lists:keyfind(<<"value">>, 1, Row),
+                      {<<"value">>, Value} = lists:keyfind(<<"value">>, 1, Row),
                       %ID = couchbeam_doc:get_value(<<"id">>, {Value}),
                       %URL = list_to_binary(couchbeam:doc_url(DB, ID)),
                       %Where = couchbeam_doc:get_value(<<"where">>, {Value}),
                       %Where2 = <<Host/binary, "/", URL/binary, "/", Where/binary>>,
                       %{Doc} = couchbeam_doc:set_value(<<"where">>, Where2, {Value}),
-                      {struct, Value}
+                      Value
               end, Rows).
 
 get_tags(DB, Options) ->
