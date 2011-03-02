@@ -30,11 +30,7 @@ body {
 * {margin: 0; padding: 0;}
 img {border: none;}
 .container {
-	height: 360px;
-	width: 2500px;
-	//margin: -180px 0 0 -450px;
-	//top: 50%; left: 50%;
-	//position: absolute;
+
 }
 ul.thumb {
 	float: left;
@@ -43,6 +39,7 @@ ul.thumb {
 	width: 360px;
 }
 ul.thumb li {
+    background: #f0f0f0;
 	margin: 0; padding: 5px;
 	float: left;
 	position: relative;
@@ -50,10 +47,9 @@ ul.thumb li {
 	height: 110px;
 }
 ul.thumb li img {
-	width: 100px; height: 100px;
-	border: 1px solid #ddd;
-	padding: 5px;
-	background: #f0f0f0;
+	//border: 1px solid #ddd;
+	//padding: 5px;
+	//background: #f0f0f0;
 	position: absolute;
 	left: 0; top: 0;
 	-ms-interpolation-mode: bicubic;
@@ -66,6 +62,14 @@ ul.thumb li img.hover {
 	float: left;
 	padding: 9px 0;
 	margin-left: -10px;
+}
+.clip{
+  position:absolute;
+  clip:rect(0px 110px 110px 0px);
+}
+.mainclip{
+  position:absolute;
+  clip:rect(0px 900px 800px 0px);
 }
 </style>
   </head>
